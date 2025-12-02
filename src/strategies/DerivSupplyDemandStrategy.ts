@@ -89,6 +89,11 @@ export class DerivSupplyDemandStrategy {
     };
   }
 
+  public setMinSignalGap(ms: number): void {
+    this.minSignalGap = ms;
+    console.log(`⏱️ Min signal gap updated to ${ms}ms (${ms/60000} minutes)`);
+  }
+
   private updateZones(candles: any[], symbol: string, timeframe: number): void {
     const newZones = this.zoneDetector.detectZones(candles);
     

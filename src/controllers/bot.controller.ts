@@ -111,7 +111,7 @@ export const getBotConfig = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
-export const startBot = async (req: AuthenticatedRequest, res: Response) => {
+exports.startBot = async (req, res) => {
   try {
     const userId = req.user.id;
     const userEmail = req.user.email;
@@ -119,25 +119,27 @@ export const startBot = async (req: AuthenticatedRequest, res: Response) => {
 
     console.log(`🚀 Starting bot for user ${userId} (${userEmail})`);
 
-    // Check subscription for free users
-    if (subscription === 'free') {
-      // Check if free user has already used their quota
-      const { data: existingBots } = await supabase
-        .from("bot_status")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("is_running", true);
-
-      if (existingBots && existingBots.length > 0) {
-        return res.status(403).json({ 
-          error: "Free users can only run one bot at a time. Upgrade to premium for multiple bots." 
-        });
-      }
+    // Check if user already has a bot running (in-memory check)
+    if (botStates.has(userId) && botStates.get(userId).isRunning) {
+      return res.status(400).json({ 
+        error: "You already have a bot running. Stop the current bot first." 
+      });
     }
 
-    // Check if bot is already running for this user
-    if (botStates.has(userId) && botStates.get(userId)!.isRunning) {
-      return res.status(400).json({ error: "Bot is already running for your account" });
+    // For ALL users (free and premium), check database for running bots
+    const { data: existingBots } = await supabase
+      .from("bot_status")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_running", true);
+
+    if (existingBots && existingBots.length > 0) {
+      // Clean up database state (in case of server restart)
+      console.log(`🔄 Cleaning up stale bot status for user ${userId}`);
+      await supabase
+        .from("bot_status")
+        .update({ is_running: false })
+        .eq("user_id", userId);
     }
 
     // Get bot configuration
@@ -166,43 +168,13 @@ export const startBot = async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    // Initialize Deriv connection
-    console.log(`🔗 Connecting to Deriv for user ${userId}...`);
-    
-    // Check if Deriv is already connected
-    if (!isDerivConnected()) {
-      deriv.connect();
-      
-      // Wait for authorization
-      await new Promise<void>((resolve) => {
-        const authHandler = (data: any) => {
-          if (data.msg_type === 'authorize' && data.authorize?.account_id) {
-            console.log(`✅ Deriv authorized: ${data.authorize.account_id}`);
-            deriv.off('message', authHandler);
-            resolve();
-          }
-        };
-        deriv.on('message', authHandler);
-
-        setTimeout(() => {
-          deriv.off('message', authHandler);
-          console.log(`⚠️ Deriv authorization timeout`);
-          resolve();
-        }, 10000);
-      });
-    } else {
-      console.log(`✅ Deriv already connected`);
-    }
-
-    // Initialize strategy
+    // Initialize bot state
     const strategy = new DerivSupplyDemandStrategy();
     
-    // Configure strategy from user config
     if (config.minSignalGap) {
-      // strategy.setMinSignalGap(config.minSignalGap * 60000); // Convert minutes to ms
+      strategy.setMinSignalGap(config.minSignalGap * 60000);
     }
 
-    // Initialize bot state
     const botState = {
       isRunning: true,
       startedAt: new Date(),
@@ -233,34 +205,15 @@ export const startBot = async (req: AuthenticatedRequest, res: Response) => {
       console.log('Database error:', statusError);
     }
 
-    // Subscribe to real-time ticks for all symbols
-    config.symbols.forEach((symbol: string) => {
-      deriv.subscribeTicks(symbol);
-      console.log(`👂 Subscribed to ${symbol} for user ${userId}`);
-    });
-
     // Start the trading cycle
     const tradingInterval = setInterval(() => {
       executeTradingCycle(userId, config);
-    }, config.analysisInterval || 30000); // Default: 30 seconds
+    }, config.analysisInterval || 30000);
 
     botState.tradingInterval = tradingInterval;
 
-    // Listen for trading signals from DerivWebSocket
-    const signalHandler = (signal: DerivSignal) => {
-      if (signal.action !== 'HOLD') {
-        console.log(`🎯 Signal detected: ${signal.action} ${signal.symbol}`);
-        handleTradingSignal(userId, signal);
-      }
-    };
-    deriv.on('trading_signal', signalHandler);
-
-    // Store the handler reference for cleanup
-    botState.config._signalHandler = signalHandler;
-
     console.log(`🤖 Bot started for user ${userId}`);
     console.log(`📊 Trading symbols: ${config.symbols.join(', ')}`);
-    console.log(`⏱️  Analysis interval: ${config.analysisInterval || 30} seconds`);
     console.log(`💰 Trade amount: $${baseAmount}`);
     console.log(`👑 Subscription: ${subscription}`);
 
@@ -279,7 +232,8 @@ export const startBot = async (req: AuthenticatedRequest, res: Response) => {
         amountPerTrade: baseAmount
       }
     });
-  } catch (error: any) {
+
+  } catch (error) {
     console.error('Start bot error:', error);
     res.status(500).json({ error: 'Failed to start bot: ' + error.message });
   }
