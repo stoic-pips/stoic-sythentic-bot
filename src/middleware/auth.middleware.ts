@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-const { supabase } = require('../config/supabase');
+const supabase = require('../config/supabase').supabase;
 
 exports.authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];

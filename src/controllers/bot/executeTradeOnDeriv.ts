@@ -1,7 +1,7 @@
 import { DerivSignal } from "../../strategies/DerivSupplyDemandStrategy";
 
 const getProposalFromDeriv = require('./getProposalFromDeriv');
-const buyContractOnDeriv = require('./botContractOnDeriv');
+const buyContractOnDeriv = require('./buyContractOnDeriv');
 
 const executeTradeOnDeriv = async(userId: string, signal: DerivSignal, config: any): Promise<any> => {
   try {
@@ -18,7 +18,7 @@ const executeTradeOnDeriv = async(userId: string, signal: DerivSignal, config: a
     console.log(`📊 [${userId}] Proposal: ${proposal.display_value} - Payout: $${proposal.payout}`);
     
     // Execute the trade
-    const tradeResult = await buyContractOnDeriv(signal, proposal.id);
+    const tradeResult = await buyContractOnDeriv(signal, proposal);
     
     if (!tradeResult) {
       console.error(`❌ [${userId}] Trade execution failed`);

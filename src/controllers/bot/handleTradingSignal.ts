@@ -1,5 +1,7 @@
 import { DerivSignal } from "../../strategies/DerivSupplyDemandStrategy";
 const executeTradeOnDeriv = require('./executeTradeOnDeriv');
+const botStates = require('../../types/botStates');
+const saveTradeToDatabase = require('./saveTradeToDatabase');
 
 async function handleTradingSignal(userId: string, signal: DerivSignal) {
   const botState = botStates.get(userId);

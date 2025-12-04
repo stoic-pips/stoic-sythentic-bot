@@ -1,9 +1,9 @@
 import { Response } from 'express';
-import { DerivSupplyDemandStrategy } from "../../strategies/DerivSupplyDemandStrategy";
+import { DerivTestStrategy } from '../../strategies/DerivTestStrategy';
 import { AuthenticatedRequest } from "../../types/AuthenticatedRequest";
 
 const botStates = require('../../types/botStates');
-const executeTradingCycle = require('./executeTradingCycle');
+const executeTradingCycle = require('./executeTradeOnDeriv');
 const supabase = require('../../config/supabase').supabase;
 
 const startBot = async (req: AuthenticatedRequest, res: Response) => {
@@ -64,7 +64,7 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Initialize bot state
-    const strategy = new DerivSupplyDemandStrategy();
+    const strategy = new DerivTestStrategy();
     
     if (config.minSignalGap) {
       strategy.setMinSignalGap(config.minSignalGap * 60000);
@@ -102,7 +102,13 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
 
     // Start the trading cycle with proper interval
     const cycleInterval = (config.cycleInterval || 30) * 1000; // Convert to milliseconds, default 30 seconds
-    
+    const selectedSymbol = config.symbols[0];
+    const botConfig = {
+      ...config,
+      symbol: selectedSymbol,
+      amountPerTrade: baseAmount
+    };
+
     const tradingCycle = async () => {
       if (!botState.isRunning) {
         if (botState.tradingInterval) {
@@ -112,7 +118,8 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
       }
       
       try {
-        await executeTradingCycle(userId, config);
+
+        await executeTradingCycle(userId, botConfig);
       } catch (error) {
         console.error(`❌ Error in trading cycle for user ${userId}:`, error);
       }
@@ -122,7 +129,7 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
     tradingCycle();
     
     // Then set up interval for subsequent runs
-    const intervalId = setInterval(tradingCycle, cycleInterval);
+    const intervalId = setInterval(() => executeTradingCycle(userId, botConfig), cycleInterval);
     botState.tradingInterval = intervalId;
 
     console.log(`🤖 Bot started for user ${userId}`);

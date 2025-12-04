@@ -1,69 +1,35 @@
-import { Response } from 'express';
-import { DerivSignal } from "../../strategies/DerivSupplyDemandStrategy";
-import { ForceTradeRequest } from '../../types/ForceTradeRequest';
-import { AuthenticatedRequest } from '../../types/AuthenticatedRequest';
+const deriv = require("../../config/deriv");
 
-const executeTradeOnDeriv = require('./executeTradeOnDeriv');
-const botStates = require('../../types/botStates');
+const buildProposalParams = require("../../deriv/buildProposalParams");
 
-const forceTrade = async (req: AuthenticatedRequest, res: Response) => {
+const forceTrade = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { symbol, contract_type, amount } = req.body as unknown as ForceTradeRequest;
-    
-    if (!symbol || !contract_type || !amount) {
-      return res.status(400).json({ error: "Missing required parameters" });
-    }
+    const { amount, symbol, contractType, duration } = req.body;
 
-    // Validate amount based on subscription
-    if (req.user.subscription_status === 'free' && amount > 10) {
-      return res.status(403).json({ 
-        error: "Free users are limited to $10 per trade. Upgrade to premium for higher limits." 
-      });
-    }
+    // Make sure deriv is connected
+    if (!deriv) throw new Error("Deriv instance not initialized");
 
-    const signal: DerivSignal = {
-      action: contract_type === 'CALL' ? 'BUY_CALL' : 'BUY_PUT',
+    const params = buildProposalParams({
+      amount,
+      contractType,
       symbol,
-      contract_type: contract_type as 'CALL' | 'PUT',
-      amount: amount,
-      duration: 5,
-      duration_unit: 'm',
-      confidence: 0.7,
-      zone: {
-        top: 0,
-        bottom: 0,
-        type: contract_type === 'CALL' ? 'demand' : 'supply',
-        strength: 0,
-        symbol,
-        timeframe: 60,
-        created: Date.now(),
-        touched: 0
-      },
-      timestamp: Date.now()
+      duration,
+    });
+
+    // Subscribe and listen for proposals
+    const proposalHandler = (msg: any) => {
+      console.log("Proposal Response:", msg);
+      // Handle proposal here (buy, etc.)
     };
 
-    const botState = botStates.get(userId);
-    const config = botState?.config || {};
+    deriv.on("message", proposalHandler);
 
-    const tradeResult = await executeTradeOnDeriv(userId, signal, config);
-    
-    if (tradeResult) {
-      res.json({ 
-        message: "Trade executed successfully",
-        contractId: tradeResult.buy?.contract_id,
-        payout: tradeResult.buy?.payout,
-        user: {
-          id: userId,
-          subscription: req.user.subscription_status
-        }
-      });
-    } else {
-      res.status(500).json({ error: "Trade execution failed" });
-    }
-  } catch (error: any) {
-    console.error('Force trade error:', error);
-    res.status(500).json({ error: 'Failed to execute trade' });
+    deriv.send(params); // Send proposal request through your DerivWebSocket instance
+
+    res.json({ message: "Trade request sent" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Trade failed" });
   }
 };
 

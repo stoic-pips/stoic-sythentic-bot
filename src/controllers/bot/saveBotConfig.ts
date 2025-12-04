@@ -1,6 +1,8 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../types/AuthenticatedRequest';
 
+const supabase = require('../../config/supabase').supabase;
+
 const saveBotConfig = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user;

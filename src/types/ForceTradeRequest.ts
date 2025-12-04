@@ -1,5 +1,5 @@
 export interface ForceTradeRequest {
   symbol: string;
   contract_type: "CALL" | "PUT";
-  amount: number;
+  amountPerTrade: number;
 }
