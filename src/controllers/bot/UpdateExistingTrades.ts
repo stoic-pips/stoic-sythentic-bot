@@ -1,19 +1,24 @@
 const botStates = require('../../types/botStates');
+const { supabase } = require('../../config/supabase');
 
-const updateExistingTrades = async (userId: string) => {
+const updateExistingTrades = async (userId: string): Promise<number> => {
+  let updatedTrades = 0;
+
   const botState = botStates.get(userId);
-  if (!botState) return;
+  if (!botState) return 0;
 
-  // Check for contract updates
-  botState.currentTrades.forEach(async (trade: any, index: number) => {
+  for (const trade of botState.currentTrades) {
     if (trade.status === 'open') {
-      // Check if contract is expired (assuming 5-minute contracts)
+
       const now = new Date();
       const tradeTime = new Date(trade.timestamp);
-      const duration = 5 * 60 * 1000; // 5 minutes in milliseconds
-      
-      if (now.getTime() - tradeTime.getTime() > duration) {
-        // Contract expired, close it
+
+      const durationMs = 5 * 60 * 1000; // 5 minutes
+
+      // Check if expired
+      if (now.getTime() - tradeTime.getTime() > durationMs) {
+        
+        // Mark as closed
         trade.status = 'closed';
         trade.closedAt = now;
         trade.closePrice = trade.entryPrice;
@@ -29,17 +34,22 @@ const updateExistingTrades = async (userId: string) => {
           .eq('trade_id', trade.id);
 
         if (!error) {
+          updatedTrades++;
           console.log(`🔒 [${userId}] Contract ${trade.contractId} closed (expired)`);
+        } else {
+          console.error(`⚠️ [${userId}] Failed to update contract ${trade.contractId}`, error);
         }
       }
     }
-  });
+  }
 
-  // Remove closed trades from memory after 1 hour
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  botState.currentTrades = botState.currentTrades.filter((trade: any) => 
+
+  botState.currentTrades = botState.currentTrades.filter((trade: any) =>
     trade.status === 'open' || new Date(trade.timestamp) > oneHourAgo
   );
-}
+
+  return updatedTrades;
+};
 
 export { updateExistingTrades };

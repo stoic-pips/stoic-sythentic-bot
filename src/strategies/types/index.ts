@@ -1,4 +1,3 @@
-// src/strategies/types/index.ts
 export interface Candle {
   open: number;
   high: number;

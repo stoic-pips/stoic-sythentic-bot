@@ -7,7 +7,7 @@ const getProposalFromDeriv = async (signal: DerivSignal): Promise<any> => {
 
     // Map fields correctly
     const amount = signal.amount || 10;
-    const contract_type = signal.contract_type || (signal.action === 'BUY_CALL' ? 'CALL' : 'PUT');
+    const contract_type = signal.contract_type || getContractType(signal.action);
     const duration = signal.duration || 60;
     const duration_unit = signal.duration_unit || 's';
 
@@ -71,5 +71,18 @@ const getProposalFromDeriv = async (signal: DerivSignal): Promise<any> => {
     }, 10000);
   });
 }
+
+const getContractType = (action: string) => {
+  switch (action) {
+    case "BUY_CALL":
+    case "BUY_RISE":
+      return "BUY_RISE";
+    case "BUY_PUT":
+    case "BUY_FALL":
+      return "BUY_FALL";
+    default:
+      throw new Error(`Unknown action: ${action}`);
+  }
+};
 
 module.exports = getProposalFromDeriv;

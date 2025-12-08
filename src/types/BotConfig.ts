@@ -1,7 +1,7 @@
 export interface BotConfig {
   symbols: string[];
-  amountPerTrade: number;
-  duration?: number;
-  candleInterval?: string;
-  strategy?: string;
+  amountPerTrade?: number;
+  timeframe?: number;
+  candleCount?: number;
+  cycleInterval?: number;
 }

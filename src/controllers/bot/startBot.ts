@@ -1,6 +1,6 @@
 import { Response } from 'express';
-import { DerivTestStrategy } from '../../strategies/DerivTestStrategy';
 import { AuthenticatedRequest } from "../../types/AuthenticatedRequest";
+import { DerivSupplyDemandStrategy } from '../../strategies/DerivSupplyDemandStrategy';
 
 const botStates = require('../../types/botStates');
 const executeTradingCycle = require('./executeTradeOnDeriv');
@@ -64,7 +64,7 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Initialize bot state
-    const strategy = new DerivTestStrategy();
+    const strategy = new DerivSupplyDemandStrategy();
     
     if (config.minSignalGap) {
       strategy.setMinSignalGap(config.minSignalGap * 60000);
@@ -118,7 +118,6 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
       }
       
       try {
-
         await executeTradingCycle(userId, botConfig);
       } catch (error) {
         console.error(`❌ Error in trading cycle for user ${userId}:`, error);

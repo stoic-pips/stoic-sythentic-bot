@@ -1,12 +1,15 @@
-const botStates = require('../../types/botStates');
-const { executeTradeOnDeriv } = require('./executeTradeOnDeriv');
-const { getCandlesFromDeriv } = require('./getCandlesFromDeriv');
-const { saveTradeToDatabase } = require('./saveTradeToDatabase');
-const { updateExistingTrades } = require('./UpdateExistingTrades');
+import { BotConfig } from "../../types/BotConfig";
 import { delay } from "../../utils/delay";
+import { getCandlesFromDeriv } from "./getCandlesFromDeriv";
+import saveTradeToDatabase from "./saveTradeToDatabase";
+import { updateExistingTrades } from "./UpdateExistingTrades";
 
-const executeTradingCycle = async (userId: string, config: any) => {
+const executeTradeOnDeriv = require('./executeTradeOnDeriv');
+const botStates = require('../../types/botStates');
+
+export const executeTradingCycle = async (userId: string, config: BotConfig) => {
   const botState = botStates.get(userId);
+
   if (!botState || !botState.isRunning) {
     console.log(`⏹️ [${userId}] Bot stopped, skipping cycle`);
     return;
@@ -20,114 +23,91 @@ const executeTradingCycle = async (userId: string, config: any) => {
 
       try {
         console.log(`📈 [${userId}] Analyzing ${symbol}...`);
-        
-        const timeframe = config.timeframe || 60;
-        const count = config.candleCount || 100;
+
+        const timeframe = config.timeframe ?? 60;
+        const count = config.candleCount ?? 100;
+
         const candles = await getCandlesFromDeriv(symbol, timeframe, count);
-        
-        if (candles.length < 20) {
-          console.log(`⚠️ [${userId}] Insufficient data for ${symbol} (only ${candles.length} candles)`);
+
+        if (!candles || candles.length < 20) {
+          console.log(`⚠️ [${userId}] Not enough candles for ${symbol}`);
           continue;
         }
 
         console.log(`📊 [${userId}] Got ${candles.length} candles for ${symbol}`);
-        
+
         const signal = botState.strategy.analyzeCandles(candles, symbol, timeframe);
+        console.log(`🔍 [${userId}] Raw signal: `, signal);
 
-        console.log(`🔍 [${userId}] Raw signal:`, signal);
+        if (signal.action === "HOLD") {
+          console.log(`⏸️ [${userId}] HOLD for ${symbol} — no trade`);
+          continue;
+        }
 
-        if (signal.action !== 'HOLD') {
+        const validatedSignal = {
+          action: signal.action,
+          symbol: signal.symbol || symbol,
+          contract_type:
+            signal.contract_type ||
+            (signal.action === "BUY_CALL" ? "CALL" : "PUT"),
+          amountPerTrade:
+            signal.amount || config.amountPerTrade || 10,
+          duration: signal.duration || 10,
+          duration_unit: signal.duration_unit || "s",
+          confidence: signal.confidence || 0.8,
+          zone: signal.zone || {
+            top: 0,
+            bottom: 0,
+            type: signal.action === "BUY_CALL" ? "demand" : "supply",
+            strength: 0,
+            symbol,
+            timeframe,
+            created: Date.now(),
+            touched: 0,
+          },
+          timestamp: signal.timestamp || Date.now(),
+        };
 
-          // 🛠️ Ensure ALL required fields are present
-          const validatedSignal = {
-            action: signal.action,
-            symbol: signal.symbol || symbol,
+        console.log(`🚀 [${userId}] Executing trade:`);
+        console.log(`   Symbol: ${validatedSignal.symbol}`);
+        console.log(`   Action: ${validatedSignal.action}`);
+        console.log(`   Contract: ${validatedSignal.contract_type}`);
+        console.log(`   Amount: $${validatedSignal.amountPerTrade}`);
+        console.log(`   Duration: ${validatedSignal.duration} ${validatedSignal.duration_unit}`);
 
-            // Contract type derived if missing
-            contract_type:
-              signal.contract_type ||
-              (signal.action === "BUY_CALL" ? "CALL" : "PUT"),
+        const tradeResult = await executeTradeOnDeriv(
+          userId,
+          validatedSignal,
+          config
+        );
 
-            // Amount
-            amountPerTrade: signal.amount || config.amountPerTrade || 10,
+        if (tradeResult && tradeResult.buy) {
+          console.log(`✅ [${userId}] TRADE EXECUTED`);
+          console.log(`   Contract ID: ${tradeResult.buy.contract_id}`);
 
-            // Duration defaults
-            duration: signal.duration || 10,
-            duration_unit: signal.duration_unit || "s",
+          botState.tradesExecuted++;
+          botState.currentTrades.push(tradeResult);
 
-            // Confidence fallback
-            confidence: signal.confidence || 0.8,
-
-            // Zone fallback
-            zone: signal.zone || {
-              top: 0,
-              bottom: 0,
-              type: signal.action === 'BUY_CALL' ? 'demand' : 'supply',
-              strength: 0,
-              symbol: signal.symbol || symbol,
-              timeframe,
-              created: Date.now(),
-              touched: 0
-            },
-
-            timestamp: signal.timestamp || Date.now()
-          };
-
-          console.log(`🚀 [${userId}] Executing trade:`);
-          console.log(`   Symbol: ${validatedSignal.symbol}`);
-          console.log(`   Action: ${validatedSignal.action}`);
-          console.log(`   Contract: ${validatedSignal.contract_type}`);
-          console.log(`   Amount: $${validatedSignal.amountPerTrade}`);
-          console.log(`   Duration: ${validatedSignal.duration} ${validatedSignal.duration_unit}`);
-
-          // ********************************************
-          // MOST IMPORTANT: Pass validatedSignal 
-          // ********************************************
-          const tradeResult = await executeTradeOnDeriv(
-            userId,
-            validatedSignal,
-            config
-          );
-
-          if (tradeResult && tradeResult.buy) {
-            console.log(`✅ [${userId}] TRADE EXECUTED SUCCESSFULLY!`);
-            console.log(`   Contract ID: ${tradeResult.buy.contract_id}`);
-            console.log(`   Payout: $${tradeResult.buy.payout}`);
-            console.log(`   Entry Tick: ${tradeResult.buy.entry_tick}`);
-            
-            botState.tradesExecuted++;
-            botState.currentTrades.push(tradeResult);
-            
-            await saveTradeToDatabase(userId, tradeResult);
-            console.log(`💾 [${userId}] Trade saved to database`);
-          } else {
-            console.log(`❌ [${userId}] Trade execution failed or returned no result`);
-          }
-
+          await saveTradeToDatabase(userId, tradeResult);
+          console.log(`💾 Trade saved`);
         } else {
-          console.log(`⏸️ [${userId}] No signal for ${symbol} — HOLD`);
+          console.log(`❌ [${userId}] Trade failed or no result`);
         }
 
         await delay(2000);
 
       } catch (error: any) {
         console.error(`❌ [${userId}] Error analyzing ${symbol}:`, error.message);
-        console.error(error.stack);
       }
     }
 
     const updated = await updateExistingTrades(userId);
     if (updated > 0) {
-      console.log(`📝 [${userId}] Updated ${updated} existing trades`);
+      console.log(`📝 Updated ${updated} open trades`);
     }
-
   } catch (error: any) {
     console.error(`❌ [${userId}] Trading cycle error:`, error.message);
-    console.error(error.stack);
   }
-  
-  console.log(`✅ [${userId}] Trading cycle completed`);
-  console.log(`⏳ [${userId}] Next cycle in ${(config.cycleInterval || 30)} seconds...`);
-}
 
-module.exports = executeTradingCycle;
+  console.log(`⏳ Next cycle in ${config.cycleInterval ?? 30} seconds...`);
+};
