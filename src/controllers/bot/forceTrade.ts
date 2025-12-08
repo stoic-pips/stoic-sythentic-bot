@@ -1,8 +1,9 @@
+import { Response } from "express";
 const deriv = require("../../config/deriv");
 
 const buildProposalParams = require("../../deriv/buildProposalParams");
 
-const forceTrade = async (req, res) => {
+const forceTrade = async (req, res: Response) => {
   try {
     const { amount, symbol, contractType, duration } = req.body;
 
@@ -24,7 +25,7 @@ const forceTrade = async (req, res) => {
 
     deriv.on("message", proposalHandler);
 
-    deriv.send(params); // Send proposal request through your DerivWebSocket instance
+    deriv.send(params);
 
     res.json({ message: "Trade request sent" });
   } catch (error) {

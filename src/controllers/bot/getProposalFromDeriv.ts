@@ -1,15 +1,40 @@
 import { DerivSignal } from "../../strategies/DerivSupplyDemandStrategy";
+import supportsRiseFall from "../../types/supportRiseFail";
+
 const { deriv } = require('../../config/deriv');
+const { getContractType } = require('../../types/getContractType');
 
 const getProposalFromDeriv = async (signal: DerivSignal): Promise<any> => {
   return new Promise((resolve, reject) => {
     const requestId = Date.now();
 
-    // Map fields correctly
     const amount = signal.amount || 10;
-    const contract_type = signal.contract_type || getContractType(signal.action);
-    const duration = signal.duration || 60;
-    const duration_unit = signal.duration_unit || 's';
+    
+    let contract_type = signal.contract_type || getContractType(signal.action);
+    
+    if (supportsRiseFall(signal.symbol)) {
+      // Convert CALL/PUT → RISE/FALL
+      if (contract_type === "CALL") contract_type = "RISE";
+      if (contract_type === "PUT") contract_type = "FALL";
+    } else {
+      // Force CALL/PUT for symbols that DO NOT support RISE/FALL
+      if (contract_type === "RISE") contract_type = "CALL";
+      if (contract_type === "FALL") contract_type = "PUT";
+    }
+
+    const duration = signal.duration || 5;
+    const duration_unit = signal.duration_unit || 't';
+
+    console.log(`💰 Amount: ${amount}`);
+    console.log(`📝 Contract Type: ${contract_type}`);
+    console.log(`⏱️ Duration: ${duration}`);
+    console.log(`📅 Duration Unit: ${duration_unit}`);
+
+    if (!signal.action || signal.action === 'HOLD') {
+      console.log('⏸️ [getProposal] Signal is HOLD or undefined, skipping trade');
+      resolve(null);
+      return;
+    }
 
     console.log('🔍 [getProposal] Signal received:', {
       symbol: signal.symbol,
@@ -62,27 +87,15 @@ const getProposalFromDeriv = async (signal: DerivSignal): Promise<any> => {
     };
 
     deriv.on('message', handler);
+    
     deriv.send(request);
 
     setTimeout(() => {
       deriv.off('message', handler);
       console.error('⏰ [getProposal] Timeout waiting for proposal');
       reject(new Error('Timeout getting proposal'));
-    }, 10000);
+    }, 15000);
   });
 }
-
-const getContractType = (action: string) => {
-  switch (action) {
-    case "BUY_CALL":
-    case "BUY_RISE":
-      return "BUY_RISE";
-    case "BUY_PUT":
-    case "BUY_FALL":
-      return "BUY_FALL";
-    default:
-      throw new Error(`Unknown action: ${action}`);
-  }
-};
 
 module.exports = getProposalFromDeriv;

@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from "../../types/AuthenticatedRequest";
 import { DerivSupplyDemandStrategy } from '../../strategies/DerivSupplyDemandStrategy';
 
 const botStates = require('../../types/botStates');
-const executeTradingCycle = require('./executeTradeOnDeriv');
+const { executeTradingCycle } = require('./executeTradingCycle');
 const supabase = require('../../config/supabase').supabase;
 
 const startBot = async (req: AuthenticatedRequest, res: Response) => {

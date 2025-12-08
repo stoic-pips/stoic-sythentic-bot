@@ -5,12 +5,29 @@ const buyContractOnDeriv = require('./buyContractOnDeriv');
 
 const executeTradeOnDeriv = async(
   userId: string, 
-  signal: DerivSignal, 
+  signal: DerivSignal,
   config: any
 ): Promise<any> => {
   try {
-    console.log(`📤 [${userId}] Executing trade: ${signal.contract_type} ${signal.symbol} $${signal.amount}`);
+    console.log(`🔍 [${userId}] DEBUG - executeTradeOnDeriv called`);
+    console.log(`🔍 [${userId}] DEBUG - signal type:`, signal);
+    console.log(`🔍 [${userId}] DEBUG - signal keys:`, Object.keys(signal || {}));
+    console.log(`🔍 [${userId}] DEBUG - full signal:`, JSON.stringify(signal, null, 2));
     
+    if (!signal) {
+      console.log(`❌ [${userId}] Signal is null or undefined`);
+      return null;
+    }
+
+    const action = signal.contract_type || signal.action;
+    console.log(`🔍 [${userId}] DEBUG - action value: "${signal}"`);
+    console.log(`🔍 [${userId}] DEBUG - action type: ${typeof action}`);
+    
+    if (!action || action === 'HOLD') {
+      console.log(`⏸️ [${userId}] Signal is HOLD or undefined, skipping trade`);
+      return null;
+    }
+
     // Get proposal first
     const proposal = await getProposalFromDeriv(signal);
     
@@ -49,7 +66,8 @@ const executeTradeOnDeriv = async(
     };
 
   } catch (error: any) {
-    console.error(`❌ [${userId}] Trade execution error:`, error.message);
+    console.error(`❌ [${userId}] Trade execution error: ${error.message}`);
+    console.error(`🔍 [${userId}] Error stack:`, error.stack);
     return null;
   }
 }

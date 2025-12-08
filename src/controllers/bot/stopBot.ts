@@ -3,6 +3,8 @@ import { AuthenticatedRequest } from '../../types/AuthenticatedRequest';
 const deriv = require('../../config/deriv');
 const botStates = require('../../types/botStates');
 
+const supabase = require('../../config/supabase').supabase;
+
 const stopBot = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user.id;
@@ -14,28 +16,22 @@ const stopBot = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "Bot is not running for your account" });
     }
 
-    // Stop the interval
     if (botState.tradingInterval) {
       clearInterval(botState.tradingInterval);
       botState.tradingInterval = null;
     }
 
-    // Remove signal handler
     if (botState.config._signalHandler) {
       deriv.off('trading_signal', botState.config._signalHandler);
     }
 
-    // Unsubscribe from all symbols
     if (botState.config.symbols) {
-      // Note: You might need to implement unsubscribe in DerivWebSocket
       console.log(`🔇 Unsubscribed from symbols for user ${userId}`);
     }
 
-    // Update bot state
     botState.isRunning = false;
     botState.derivConnected = false;
 
-    // Update database
     const stoppedAt = new Date();
     const { error } = await supabase
       .from("bot_status")
@@ -50,7 +46,6 @@ const stopBot = async (req: AuthenticatedRequest, res: Response) => {
       console.log('Database error:', error);
     }
 
-    // Remove from memory
     botStates.delete(userId);
 
     console.log(`✅ Bot stopped for user ${userId}`);

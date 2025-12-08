@@ -1,11 +1,12 @@
 import { DerivWebSocket } from '../deriv/DerivWebSocket';
 import { DerivSupplyDemandStrategy, DerivSignal } from '../strategies/DerivSupplyDemandStrategy';
+import ContractType from '../types/contractType';
 
 interface ContractParameters {
   amount: number;
   barrier?: number;
   basis: string;
-  contract_type: 'CALL' | 'PUT' | 'MULTUP' | 'MULTDOWN';
+  contract_type: 'CALL' | 'PUT' | 'MULTUP' | 'MULTDOWN' | 'RISE' | 'FALL';
   currency: string;
   duration: number;
   duration_unit: 's' | 'm' | 'h' | 'd';
@@ -28,6 +29,7 @@ interface TradeResult {
 export class TradingService {
   private derivWS: DerivWebSocket;
   private strategy: DerivSupplyDemandStrategy;
+  private activeZones: any[] = [];
   private activeSymbols: string[] = [];
   private isRunning: boolean = false;
   private pendingRequests: Map<number, { resolve: Function, reject: Function }> = new Map();
@@ -44,7 +46,6 @@ export class TradingService {
     
     this.strategy = new DerivSupplyDemandStrategy();
     
-    // Set up event listeners
     this.setupEventListeners();
   }
 
@@ -116,27 +117,27 @@ export class TradingService {
     });
   }
 
-  private handleDerivMessage(data: any): void {
-    if (data.req_id) {
-      const pending = this.pendingRequests.get(data.req_id);
-      if (pending) {
-        this.pendingRequests.delete(data.req_id);
-        if (data.error) {
-          pending.reject(new Error(data.error.message));
-        } else {
-          pending.resolve(data);
-        }
+private handleDerivMessage(data: any): void {
+  if (data.req_id) {
+    const pending = this.pendingRequests.get(data.req_id);
+    if (pending) {
+      this.pendingRequests.delete(data.req_id);
+      if (data.error) {
+        pending.reject(new Error(data.error.message));
+      } else {
+        pending.resolve(data);
       }
     }
-
-    if (data.proposal) {
-      console.log(`📊 Proposal received for ${data.echo_req?.symbol}: ${data.proposal.display_value}`);
-    }
-
-    if (data.buy) {
-      console.log(`✅ Trade executed: ${data.buy.contract_id} - Payout: $${data.buy.payout}`);
-    }
   }
+
+  if (data.proposal) {
+    console.log(`📊 Proposal received for ${data.echo_req?.symbol}: ${data.proposal.display_value}`);
+  }
+
+  if (data.buy) {
+    console.log(`✅ Trade executed: ${data.buy.contract_id} - Payout: $${data.buy.payout}`);
+  }
+}
 
   async analyzeAndTrade(symbol: string, timeframe: number = 60): Promise<DerivSignal | null> {
     try {
@@ -229,7 +230,7 @@ export class TradingService {
       const params: ContractParameters = {
         amount: signal.amount,
         basis: 'stake',
-        contract_type: signal.contract_type,
+        contract_type: signal.contract_type === "RISE" ? "CALL" : signal.contract_type as ContractType,
         currency: 'USD',
         duration: signal.duration,
         duration_unit: signal.duration_unit,
@@ -269,7 +270,7 @@ export class TradingService {
       const params: ContractParameters = {
         amount: signal.amount,
         basis: 'stake',
-        contract_type: signal.contract_type,
+        contract_type: signal.contract_type as ContractType,
         currency: 'USD',
         duration: signal.duration,
         duration_unit: signal.duration_unit,
@@ -358,7 +359,7 @@ export class TradingService {
   }
 
   getActiveZones(): any[] {
-    return this.strategy.getActiveZones();
+    return this.activeZones;
   }
 
   disconnect(): void {
