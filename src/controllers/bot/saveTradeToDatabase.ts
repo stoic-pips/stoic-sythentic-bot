@@ -1,3 +1,11 @@
+const { supabase } = require('../../config/supabase');
+
+/**
+ * Saves a trade to the database
+ * @param {string} userId - The user ID of the user who executed the trade
+ * @param {object} trade - The trade object containing the trade details
+ * @returns {Promise<void>} - A promise that resolves when the trade is saved to the database
+ */
 const saveTradeToDatabase = async (userId: string, trade: any) => {
   try {
     const { error } = await supabase

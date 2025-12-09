@@ -29,10 +29,18 @@ export const executeTradingCycle = async (userId: string, config: BotConfig) => 
 
         const isRiseFall = supportsRiseFall(symbol);
 
+        let action = "BUY_CALL";
+        let contract_type = "CALL";
+
+        if (isRiseFall) {
+            action = "BUY_CALL";     // RISE → CALL
+            contract_type = "CALL";  // RISE → CALL
+        }
+
         const signal = {
-          action: isRiseFall ? 'BUY_RISE' : 'BUY_CALL',
+          action: action,
           symbol: symbol,
-          contract_type: isRiseFall ? 'RISE' : 'CALL',
+          contract_type: contract_type,
           amount: config.amountPerTrade || 10,
           duration: isRiseFall ? 5 : 60,
           duration_unit: isRiseFall ? 't' : 's',

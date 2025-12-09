@@ -4,6 +4,12 @@ import supportsRiseFall from "../../types/supportRiseFail";
 const { deriv } = require('../../config/deriv');
 const { getContractType } = require('../../types/getContractType');
 
+/**
+ * Gets a proposal from Deriv based on the given signal.
+ * @param {DerivSignal} signal - The signal to send to Deriv.
+ * @returns {Promise<any>} - A promise that resolves to the proposal received from Deriv.
+ * @throws {Error} - If there is an error with the API request.
+ */
 const getProposalFromDeriv = async (signal: DerivSignal): Promise<any> => {
   return new Promise((resolve, reject) => {
     const requestId = Date.now();
@@ -11,19 +17,16 @@ const getProposalFromDeriv = async (signal: DerivSignal): Promise<any> => {
     const amount = signal.amount || 10;
     
     let contract_type = signal.contract_type || getContractType(signal.action);
-    
-    if (supportsRiseFall(signal.symbol)) {
-      // Convert CALL/PUT → RISE/FALL
-      if (contract_type === "CALL") contract_type = "RISE";
-      if (contract_type === "PUT") contract_type = "FALL";
-    } else {
-      // Force CALL/PUT for symbols that DO NOT support RISE/FALL
-      if (contract_type === "RISE") contract_type = "CALL";
-      if (contract_type === "FALL") contract_type = "PUT";
-    }
 
     const duration = signal.duration || 5;
-    const duration_unit = signal.duration_unit || 't';
+    let duration_unit = signal.duration_unit || 't';
+
+    if (signal.symbol.startsWith("R_")) {
+        if (contract_type === "RISE") contract_type = "CALL";
+        if (contract_type === "FALL") contract_type = "PUT";
+
+        duration_unit = 't';
+    }
 
     console.log(`💰 Amount: ${amount}`);
     console.log(`📝 Contract Type: ${contract_type}`);
