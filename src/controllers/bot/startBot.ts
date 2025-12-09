@@ -1,13 +1,13 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from "../../types/AuthenticatedRequest";
 import { DerivSupplyDemandStrategy } from '../../strategies/DerivSupplyDemandStrategy';
+import ALLOWED_GRANULARITIES from './helpers/ALLOWED_GRANULARITIES';
+import symbolTimeFrames from './helpers/symbolTimeFrames';
 
 const botStates = require('../../types/botStates');
 const { executeTradingCycle } = require('./trade/executeTradingCycle');
 const supabase = require('../../config/supabase').supabase;
 const fetchLatestCandles = require('../../strategies/fetchLatestCandles');
-
-const ALLOWED_GRANULARITIES = [60, 120, 180, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400];
 
 const startBot = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -127,9 +127,16 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
         const candlesMap: Record<string, any[]> = {};
 
         for (const symbol of config.symbols) {
+          const desiredTimeframe = symbolTimeFrames[symbol] || 900;
+          const closestGranularity = ALLOWED_GRANULARITIES.reduce((prev, curr) =>
+            Math.abs(curr - desiredTimeframe) < Math.abs(prev - desiredTimeframe) ? curr : prev
+          );
+
           const candles = await fetchLatestCandles(symbol, closestGranularity);
           if (candles && candles.length > 0) candlesMap[symbol] = candles;
           else console.log(`⚠️ No candles for ${symbol}, skipping`);
+
+          console.log(`Signal debug for ${symbol}: using timeframe ${closestGranularity}s`);
         }
 
         const availableSymbols = Object.keys(candlesMap);

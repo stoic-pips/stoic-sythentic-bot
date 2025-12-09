@@ -4,6 +4,7 @@ import { delay } from "../../../utils/delay";
 import saveTradeToDatabase from "./saveTradeToDatabase";
 import convertTimeframe from "../helpers/convertTimeFrame";
 import { updateExistingTrades } from "./UpdateExistingTrades";
+import symbolTimeFrames from "../helpers/symbolTimeFrames";
 
 const fetchLatestCandles = require("../../../strategies/fetchLatestCandles");
 const executeTradeOnDeriv = require("./../deriv/executeTradeOnDeriv");
@@ -64,11 +65,11 @@ export const executeTradingCycle = async (
 
     try {
       let candles = [];
-      const timeframeInSeconds = convertTimeframe(config.timeframe || 60);
 
       try {
 
-        candles = await fetchLatestCandles(symbol, timeframeInSeconds);
+        candles = await fetchLatestCandles(symbol, symbolTimeFrames[symbol]);
+
       } catch (err: any) {
         console.log(`⚠️ Skipping ${symbol}: ${err.message}`);
         continue; // Continue to next symbol
@@ -82,8 +83,10 @@ export const executeTradingCycle = async (
       const signal = strategy.analyzeCandles(
         candles,
         symbol,
-        config.timeframe || 60
+        symbolTimeFrames[symbol]
       );
+
+      console.log(`Signal debug for ${symbol}:`, signal);
 
       if (signal.action === "HOLD") {
         console.log(`⏸️ [${userId}] HOLD → ${symbol}`);
