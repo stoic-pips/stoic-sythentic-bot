@@ -1,5 +1,12 @@
 const { deriv } = require('../../config/deriv');
 
+/**
+ * Retrieves historical candle data from Deriv.
+ * @param {string} symbol The symbol to retrieve data for.
+ * @param {number} timeframe The timeframe to retrieve data for.
+ * @param {number} count The number of candles to retrieve.
+ * @returns {Promise<any[]>} A promise that resolves with an array of candles.
+ */
 const getCandlesFromDeriv = async (symbol: string, timeframe: number, count: number): Promise<any[]> => {
   return new Promise((resolve, reject) => {
     const requestId = Date.now();

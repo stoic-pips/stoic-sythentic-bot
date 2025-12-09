@@ -1,4 +1,3 @@
-// src/strategies/ZoneDetector.ts
 import { Candle, Zone } from './types';
 
 export class ZoneDetector {

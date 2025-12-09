@@ -3,6 +3,14 @@ const executeTradeOnDeriv = require('./executeTradeOnDeriv');
 const botStates = require('../../types/botStates');
 const saveTradeToDatabase = require('./saveTradeToDatabase');
 
+/**
+ * Handle a trading signal from a user.
+ * This function is called whenever a supply/demand signal is generated
+ * for a user. It checks if the signal is valid and if the user
+ * is currently running the bot, and if so, executes the trade.
+ * @param userId The ID of the user.
+ * @param signal The trading signal received from the user.
+ */
 async function handleTradingSignal(userId: string, signal: DerivSignal) {
   const botState = botStates.get(userId);
   if (!botState || !botState.isRunning) return;

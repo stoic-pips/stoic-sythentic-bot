@@ -1,9 +1,9 @@
-const saveBotConfig = require('./saveBotConfig');
-const getBotConfig = require('./getBotConfig');
+const saveBotConfig = require('./config/saveBotConfig');
+const getBotConfig = require('./config/getBotConfig');
 const startBot = require('./startBot');
 const stopBot = require('./stopBot');
-const getBotStatus = require('./getBotStatus');
-const forceTrade = require('./forceTrade');
+const getBotStatus = require('./config/getBotStatus');
+const forceTrade = require('./trade/forceTrade');
 
 module.exports = {
   saveBotConfig,

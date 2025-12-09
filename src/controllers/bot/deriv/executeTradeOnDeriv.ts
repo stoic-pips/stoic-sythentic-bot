@@ -1,8 +1,20 @@
-import { DerivSignal } from "../../strategies/DerivSupplyDemandStrategy";
+import { DerivSignal } from "../../../strategies/DerivSupplyDemandStrategy";
 
 const getProposalFromDeriv = require('./getProposalFromDeriv');
 const buyContractOnDeriv = require('./buyContractOnDeriv');
 
+/**
+ * Execute a trade on Deriv based on a given trading signal.
+ * The function takes a user ID, a trading signal, and a config object as parameters.
+ * It first checks if the signal is valid and if the user is currently running the bot.
+ * If so, it gets a proposal from Deriv, executes the trade, and returns the result.
+ * If the signal is HOLD or undefined, it skips the trade.
+ * If the proposal or trade execution fails, it logs an error and returns null.
+ * @param userId The ID of the user.
+ * @param signal The trading signal received from the user.
+ * @param config The user's bot configuration.
+ * @returns A promise that resolves to the trade result or null if the trade fails.
+ */
 const executeTradeOnDeriv = async(
   userId: string, 
   signal: DerivSignal,

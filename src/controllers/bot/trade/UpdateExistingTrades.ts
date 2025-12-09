@@ -1,6 +1,14 @@
-const botStates = require('../../types/botStates');
-const { supabase } = require('../../config/supabase');
+const botStates = require('../../../types/botStates');
+const { supabase } = require('../../../config/supabase');
 
+/**
+ * Updates existing trades for a given user.
+ * Iterates through all open trades in the user's bot state and checks if they have expired.
+ * If a trade has expired, marks it as closed and updates the database with the close price and timestamp.
+ * Also cleans up the bot state by removing trades that are older than 1 hour.
+ * @param {string} userId - The user ID of the user to update the trades for.
+ * @returns {Promise<number>} - A promise that resolves to the number of trades updated.
+ */
 const updateExistingTrades = async (userId: string): Promise<number> => {
   let updatedTrades = 0;
 

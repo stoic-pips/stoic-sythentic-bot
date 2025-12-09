@@ -1,5 +1,7 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../../types/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../../../types/AuthenticatedRequest';
+
+const supabase = require('../../../config/supabase').supabase;
 
 const getBotConfig = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -7,7 +9,7 @@ const getBotConfig = async (req: AuthenticatedRequest, res: Response) => {
 
     const { data, error } = await supabase
       .from("bot_configs")
-      .select("config_data")
+      .select("*")
       .eq("user_id", userId)
       .single();
 
@@ -16,7 +18,7 @@ const getBotConfig = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     res.json({ 
-      config: data?.config_data || {},
+      botConfig: data || {},
       user: {
         id: userId,
         subscription: req.user.subscription_status

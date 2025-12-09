@@ -7,4 +7,6 @@ export interface BotConfig {
   candleCount?: number;
   cycleInterval?: number;
   contractPreference?: ContractPreference;
+  maxTradesPerCycle?: number;   // new
+  dailyTradeLimit?: number;     // new
 }

@@ -5,6 +5,20 @@ const botStates = require('../../types/botStates');
 
 const supabase = require('../../config/supabase').supabase;
 
+/**
+ * Stops a running bot and updates the database with the final stats.
+ * Returns a response with the final stats and a success message.
+ * @param {AuthenticatedRequest} req - The authenticated request object.
+ * @param {Response} res - The response object to send the result.
+ * @returns {Promise<Response>} - A promise that resolves to a response object.
+ * The response object contains the following properties:
+ * - message: A message indicating whether the bot was stopped successfully.
+ * - status: A string indicating whether the bot is running or not.
+ * - startedAt: The timestamp when the bot was started.
+ * - stoppedAt: The timestamp when the bot was stopped.
+ * - performance: An object containing the performance metrics of the bot.
+ * - user: An object containing the user ID and subscription status.
+ */
 const stopBot = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user.id;

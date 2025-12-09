@@ -1,8 +1,23 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../../types/AuthenticatedRequest';
+import { AuthenticatedRequest } from '../../../types/AuthenticatedRequest';
 
-const botStates = require('../../types/botStates');
+const botStates = require('../../../types/botStates');
 
+/**
+ * Returns the current status of the bot for the given user.
+ * @param {AuthenticatedRequest} req - The authenticated request object.
+ * @param {Response} res - The response object to send the result.
+ * @returns {Promise<Response>} - A promise that resolves to a response object.
+ * The response object contains the following properties:
+ * - isRunning: A boolean indicating whether the bot is currently running.
+ * - startedAt: The timestamp when the bot was started.
+ * - stoppedAt: The timestamp when the bot was stopped.
+ * - currentTrades: An array of open trades.
+ * - totalProfit: The total profit made by the bot.
+ * - tradesExecuted: The number of trades executed by the bot.
+ * - message: A message indicating whether the bot is running or not.
+ * - user: An object containing the user ID and subscription status.
+ */
 const getBotStatus = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user.id;

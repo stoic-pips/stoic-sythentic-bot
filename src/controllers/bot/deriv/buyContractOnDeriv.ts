@@ -1,7 +1,14 @@
-import { DerivSignal } from "../../strategies/DerivSupplyDemandStrategy";
+import { DerivSignal } from "../../../strategies/DerivSupplyDemandStrategy";
 
-const { deriv } = require('../../config/deriv');
+const { deriv } = require('../../../config/deriv');
 
+/**
+ * Buys a contract on Deriv based on the given signal and proposal.
+ * @param {DerivSignal} signal - The signal to send to Deriv.
+ * @param {any} proposal - The proposal received from Deriv.
+ * @returns {Promise<any>} - A promise that resolves to the result of the buy request.
+ * @throws {Error} - If there is an error with the API request.
+ */
 const buyContractOnDeriv = async (signal: DerivSignal, proposal: any) => {
   return new Promise((resolve, reject) => {
     const buyRequest = {

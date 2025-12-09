@@ -1,8 +1,8 @@
-import { DerivSignal } from "../../strategies/DerivSupplyDemandStrategy";
-import supportsRiseFall from "../../types/supportRiseFail";
+import { DerivSignal } from "../../../strategies/DerivSupplyDemandStrategy";
+import supportsRiseFall from "../../../types/supportRiseFail";
 
-const { deriv } = require('../../config/deriv');
-const { getContractType } = require('../../types/getContractType');
+const { deriv } = require('../../../config/deriv');
+const { getContractType } = require('../../../types/getContractType');
 
 /**
  * Gets a proposal from Deriv based on the given signal.
