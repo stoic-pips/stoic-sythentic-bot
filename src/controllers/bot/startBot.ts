@@ -14,14 +14,12 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
 
     console.log(`🚀 Starting bot for user ${userId} (${userEmail})`);
 
-    // Check if user already has a bot running (in-memory check)
     if (botStates.has(userId) && botStates.get(userId).isRunning) {
       return res.status(400).json({ 
         error: "You already have a bot running. Stop the current bot first." 
       });
     }
 
-    // For ALL users (free and premium), check database for running bots
     const { data: existingBots } = await supabase
       .from("bot_status")
       .select("*")
@@ -124,10 +122,8 @@ const startBot = async (req: AuthenticatedRequest, res: Response) => {
       }
     };
 
-    // Run immediately once
     tradingCycle();
     
-    // Then set up interval for subsequent runs
     const intervalId = setInterval(() => executeTradingCycle(userId, botConfig), cycleInterval);
     botState.tradingInterval = intervalId;
 
